@@ -248,7 +248,7 @@
     status.innerText = "📤 Subiendo foto...";
 
     try {
-      const res = await uploadFiles([file], "tu-endpoint-de-uploadthing");
+      const res = await uploadFiles([file], { endpoint: "foto15", url: "https://uploadthing-backend-b11w.vercel.app/"});
       const url = res[0]?.url;
 
       localStorage.setItem(`fotos_${nombre}`, fotosTomadas + 1);
