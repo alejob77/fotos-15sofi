@@ -6,6 +6,7 @@
   <title>🎉 Fiesta de 15 - Sube tu Foto</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://uploadthing.com/client.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
   <style>
     * {
@@ -221,41 +222,44 @@
       }
     });
 
-    function takePhoto() {
-      const nombre = nombreInput.value.trim();
-      if (!nombre) {
-        alert("Por favor ingresa tu nombre antes de tomar la foto.");
-        return;
-      }
+    async function takePhoto() {
+  const nombre = nombreInput.value.trim();
+  if (!nombre) {
+    alert("Por favor ingresa tu nombre antes de tomar la foto.");
+    return;
+  }
 
-      const fotosTomadas = Number(localStorage.getItem(`fotos_${nombre}`)) || 0;
-      if (fotosTomadas >= 15) {
-        status.innerText = "❌ Ya has subido el máximo de 15 fotos.";
-        return;
-      }
+  const fotosTomadas = Number(localStorage.getItem(`fotos_${nombre}`)) || 0;
+  if (fotosTomadas >= 15) {
+    status.innerText = "❌ Ya has subido el máximo de 15 fotos.";
+    return;
+  }
 
-      const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const ctx = canvas.getContext('2d');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      canvas.toBlob(blob => {
-        const fileName = `${nombre}_foto_${Date.now()}.jpg`;
-        const uploadTask = storage.ref(fileName).put(blob);
+  canvas.toBlob(async (blob) => {
+    const file = new File([blob], `${nombre}_foto_${Date.now()}.jpg`, {
+      type: 'image/jpeg'
+    });
 
-        uploadTask.on('state_changed',
-          null,
-          (error) => {
-            status.innerText = "❌ Error al subir la foto: " + error.message;
-          },
-          () => {
-            localStorage.setItem(`fotos_${nombre}`, fotosTomadas + 1);
-            status.innerText = `✅ Foto subida con éxito. Has subido ${fotosTomadas + 1}/15 fotos.`;
-            mostrarGaleria(nombre); // 🧠 Actualiza el collage al subir
-          }
-        );
-      }, 'image/jpeg');
+    status.innerText = "📤 Subiendo foto...";
+
+    try {
+      const res = await uploadFiles([file], "tu-endpoint-de-uploadthing");
+      const url = res[0]?.url;
+
+      localStorage.setItem(`fotos_${nombre}`, fotosTomadas + 1);
+      status.innerText = `✅ Foto subida con éxito. Has subido ${fotosTomadas + 1}/15 fotos.`;
+
+      mostrarGaleria(nombre); // O actualiza collage
+    } catch (err) {
+      status.innerText = "❌ Error al subir la foto: " + err.message;
     }
+  }, 'image/jpeg');
+}
 
     function mostrarGaleria(nombre) {
       const galeria = document.getElementById('galeria');
