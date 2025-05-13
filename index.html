@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎉 Fiesta de 15 - Sube tu Foto</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Quicksand', sans-serif;
+      background-image: url('imagen.jpg');
+      background-size: cover;
+      background-position: center;
+      color: #6b0048;
+    }
+
+    .overlay {
+      background-color: rgba(255, 240, 245, 0.85);
+      backdrop-filter: blur(4px);
+      padding: 20px;
+      margin: 20px auto;
+      max-width: 500px;
+      border-radius: 20px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    }
+
+    h1 {
+      font-family: 'Great Vibes', cursive;
+      font-size: 2.8em;
+      margin: 0.2em 0;
+      color: #d63384;
+      text-align: center;
+      text-shadow: 1px 1px 3px white;
+    }
+
+    p {
+      text-align: center;
+      font-size: 1em;
+      color: #5c005f;
+      margin: 0.5em 0 1em;
+      text-shadow: 1px 1px 2px white;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    input, button {
+      width: 90%;
+      max-width: 300px;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1em;
+      margin-top: 1em;
+      font-family: 'Quicksand', sans-serif;
+    }
+
+    #nombreInput {
+      border: 2px solid #ffb3d9;
+      outline: none;
+    }
+
+    #subirBtn {
+      background: linear-gradient(to right, #ff66b2, #ff99cc);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    #subirBtn:hover {
+      transform: scale(1.03);
+    }
+
+    video, canvas {
+      border: 4px dashed #ff66b2;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 1em;
+      box-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px rgba(255, 105, 180, 0.4); }
+      50% { box-shadow: 0 0 20px rgba(255, 105, 180, 0.8); }
+      100% { box-shadow: 0 0 10px rgba(255, 105, 180, 0.4); }
+    }
+
+    #status {
+      margin-top: 1em;
+      font-weight: bold;
+      text-align: center;
+      font-size: 1em;
+      background-color: rgba(255,255,255,0.8);
+      padding: 10px;
+      border-radius: 10px;
+      width: 90%;
+    }
+
+    .confetti {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background-image: url('https://i.imgur.com/1v0z6FM.png');
+      background-repeat: repeat;
+      opacity: 0.06;
+      z-index: -1;
+    }
+
+    .galeria {
+      margin-top: 1.5em;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 10px;
+      padding: 10px;
+      width: 100%;
+    }
+
+    .galeria img {
+      width: 100%;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+
+    .galeria img:hover {
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="confetti"></div>
+
+  <div class="overlay">
+    <h1>M fiesta de 15 💕</h1>
+    <p>Ingresa tu nombre y toma una foto divertida.<br>¡Máximo 15 fotos por persona!</p>
+
+    <div class="container">
+      <input type="text" id="nombreInput" placeholder="Tu nombre (obligatorio)">
+      <video id="video" autoplay playsinline></video>
+      <button id="cambiarCamBtn">🔄 Cambiar Cámara</button>
+      <button id="subirBtn" onclick="takePhoto()">📸 Tomar Foto</button>
+      <div id="status"></div>
+      <canvas id="canvas" style="display: none;"></canvas>
+      <div id="galeria" class="galeria"></div>
+    </div>
+  </div>
+
+  <script>
+    // Firebase inicialización
+    const firebaseConfig = {
+      apiKey: "AIzaSyCI3GEWdQOkGLYRcp-dUzqLyWwtAnEzzi4",
+      authDomain: "app-de-fotos-15sofi.firebaseapp.com",
+      projectId: "app-de-fotos-15sofi",
+      storageBucket: "app-de-fotos-15sofi.appspot.com",
+      messagingSenderId: "1098593033797",
+      appId: "1:1098593033797:web:ad031fb793dd2fa79d4d2c"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const storage = firebase.storage();
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const nombreInput = document.getElementById('nombreInput');
+    const cambiarCamBtn = document.getElementById('cambiarCamBtn');
+
+    let currentStream;
+    let currentDeviceId = 'user'; // 'user' para frontal, 'environment' para trasera
+
+    function iniciarCamara(dispositivoId) {
+      // Detener el flujo anterior si existe
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      const constraints = {
+        video: {
+          facingMode: dispositivoId
+        }
+      };
+
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+          video.srcObject = stream;
+          currentStream = stream;
+        })
+        .catch(err => status.innerText = "Error al acceder a la cámara: " + err.message);
+    }
+
+    // Iniciar cámara frontal por defecto
+    iniciarCamara(currentDeviceId);
+
+    cambiarCamBtn.addEventListener('click', () => {
+      currentDeviceId = currentDeviceId === 'user' ? 'environment' : 'user'; // Alternar entre frontal y trasera
+      iniciarCamara(currentDeviceId);
+    });
+
+    nombreInput.addEventListener("change", () => {
+      const nombre = nombreInput.value.trim();
+      if (nombre) {
+        mostrarGaleria(nombre);
+      }
+    });
+
+    function takePhoto() {
+      const nombre = nombreInput.value.trim();
+      if (!nombre) {
+        alert("Por favor ingresa tu nombre antes de tomar la foto.");
+        return;
+      }
+
+      const fotosTomadas = Number(localStorage.getItem(`fotos_${nombre}`)) || 0;
+      if (fotosTomadas >= 15) {
+        status.innerText = "❌ Ya has subido el máximo de 15 fotos.";
+        return;
+      }
+
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(blob => {
+        const fileName = `${nombre}_foto_${Date.now()}.jpg`;
+        const uploadTask = storage.ref(fileName).put(blob);
+
+        uploadTask.on('state_changed',
+          null,
+          (error) => {
+            status.innerText = "❌ Error al subir la foto: " + error.message;
+          },
+          () => {
+            localStorage.setItem(`fotos_${nombre}`, fotosTomadas + 1);
+            status.innerText = `✅ Foto subida con éxito. Has subido ${fotosTomadas + 1}/15 fotos.`;
+            mostrarGaleria(nombre); // 🧠 Actualiza el collage al subir
+          }
+        );
+      }, 'image/jpeg');
+    }
+
+    function mostrarGaleria(nombre) {
+      const galeria = document.getElementById('galeria');
+      galeria.innerHTML = ''; // Limpiar antes
+
+      storage.ref().listAll().then(res => {
+        const fotosUsuario = res.items.filter(item => item.name.startsWith(nombre + "_foto_"));
+        fotosUsuario.sort((a, b) => b.name.localeCompare(a.name)); // más nuevas primero
+
+        fotosUsuario.forEach(item => {
+          item.getDownloadURL().then(url => {
+            const img = document.createElement('img');
+            img.src = url;
+            galeria.appendChild(img);
+          });
+        });
+      });
+    }
+  </script>
+</body>
+</html>
